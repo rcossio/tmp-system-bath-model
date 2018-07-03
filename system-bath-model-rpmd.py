@@ -27,10 +27,10 @@ hbar = 1.0545718e-34          # in m**2*kg/s
 w_c  = 500 *1e2               # in 1/m
 w_b  = 500 *1e2               # in 1/m
 V0pp = 2085*1e2		      # in 1/m
-nsamples = 150000
+nsamples = 1000
 Nbids    = 4
 outfile  = sys.argv[1]
-f=4
+f=3
 
 #---------------------------------
 #	Constants
@@ -54,28 +54,42 @@ def c(i):
         return w(i)*np.sqrt((2*eta*m*w_c)/(np.pi*(f-1)))
 
 def calcForce (q):
-	num = 2*V0*tanh(q/a)
-	den = a * (cosh(q/a))**2
-	return num/den
+        F = np.zeros((f,Nbids),dtype=np.float64)
+	F[0,:] = 0.5* m* w_b**2 *q[0,:] - m**2 *w_b**4* q[0,i]**3/(4*V0pp)
+	for k in range(1,f):
+		F[k,:] = -m* w(k)**2 *q[k,:] +c(k)*q[0,:]
+	return F
 
 def calc_derivada_p (q):
 	derivada = calcForce(q)
 	for j in range(Nbids):
 		if   ( j == 0 ):
-                        derivada[j] += -m*w_n**2*(2*q[j]-q[Nbids-1]-q[j+1])
+                        derivada[:,j] += -m*w_n**2*(2*q[:,j]-q[:,Nbids-1]-q[:,j+1])
 		elif ( j == Nbids-1):
-                        derivada[j] += -m*w_n**2*(2*q[j]-q[j-1]    -q[0]  )
+                        derivada[:,j] += -m*w_n**2*(2*q[:,j]-q[:,j-1]    -q[:,0]  )
 		else:
-			derivada[j] += -m*w_n**2*(2*q[j]-q[j-1]    -q[j+1])
-
+			derivada[:,j] += -m*w_n**2*(2*q[:,j]-q[:,j-1]    -q[:,j+1])
 	return derivada
 	
 	
-def calcPotential (q):
-	return np.sum(V0/(cosh(q/a))**2)
+def calcPotential (qq):
+	q = C.T.dot(qq)
+	V = 0.0
+	for i in range(Nbids):
+		V += -0.5* m* w_b**2 *q[0,i]**2 + m**2 *w_b**4* q[0,i]**4/(16*V0pp)
+		for k in range(1,f):
+			V +=  0.5* m* w(k)**2 *(q[k,i]-c(k)*q[0,i]/(m*w(k)**2))**2
+	return V
 
-def heaviside_n(q):
-        return np.mean(np.heaviside(q, 1.0))
+def deltaV(q):
+	deltav = calcPotential(q)
+	for k in range(1,f):
+		deltav -= 0.5 * m * w_nm[k]**2 * np.linalg.norm(q[i,:])**2
+	return deltav
+
+def heaviside(q):
+	qq = C.dot(q)
+        return np.heaviside(np.mean(qq[0,:]), 1.0)
 
 def report(string):
         output = open(outfile,'a')
@@ -138,55 +152,46 @@ for s in range(nsamples/2):
 	#---------------------------------------
 	#	Center of mass sampling
 	#---------------------------------------
-        cm = np.zeros(f,dtype=np.float64)
-	for k in range(1,f):
-		sigmacm = 1./np.sqrt(beta_n*m*w(k)**2)
-		cm[k]   = np.random.normal(loc=0.0,scale=sigmacm) 
-	cm = C.dot(cm)
-
+        #cm = np.zeros(f,dtype=np.float64)
+	#for k in range(1,f):
+	#	sigmacm = 1./np.sqrt(beta_n*m*w_nm[k]**2)
+	#
+	#	cm[k]   = np.random.normal(loc=0.0,scale=sigmacm)
 	#------------------------------
 	#	Random sampling
 	#------------------------------
-	q = np.zeros((f,Nbids),dtype=np.float64)
+	qq = np.zeros((f,Nbids),dtype=np.float64)
 	for k in range(f):
 		r = np.random.normal(loc=0.0,scale=1.0,size=Ndim)
-		q[k,1:Nbids] = CholeskyList[k].dot(r)
-		q[k,:] += -np.mean(q[k,:])+cm[k]
+		qq[k,1:Nbids] = CholeskyList[k].dot(r)
+		qq[k,:] += -np.mean(qq[k,:]) #+cm[k] 
 	p = np.random.normal(loc=0.0,scale=sigmap,size=Nbids*f).reshape((f,Nbids))
+        q = C.T.dot(qq)
 
-	print q
-	exit()
-	# HASTA ACA MAOMENO MIRE...
-	# seguro falta todo lo del centroide
-	
 	#-------------------------------
 	#	Sampling	
 	#-------------------------------
 	z.append((q,p))
-	v_s.append(p[0]/m)
-        deltav = calcPotential(q)
-        bf.append( exp(-beta_n*deltav))
+	v_s.append(np.mean(p[0,:])/m)
+        bf.append( exp(-beta_n*deltaV(q)))
 
 	#-------------------------------
 	#	Symmetric Sampling
 	#------------------------------
 	p = -p
         z.append((q,p))
-        v_s.append(p[0]/m)
-        deltav = calcPotential(q)
-        bf.append( exp(-beta_n*deltav))
+        v_s.append(np.mean(p[0,:])/m)
+        bf.append( exp(-beta_n*deltaV(q)))
 
 v_s = np.array(v_s, dtype=np.float64)
 bf  = np.array(bf,  dtype=np.float64)
 
-exit()
 #------------------------------------
 #	Trajectories
 #------------------------------------
 for s in range(nsamples):
-	h_n = 0.5
 	t = 0
-	while 0.0+1e-12 < h_n < 1.0-1e-12:
+	while t < 10000000:
 		
 		#---------------------------------------------------
 		#	Initial state
@@ -204,16 +209,14 @@ for s in range(nsamples):
 		p = p + 0.5 * dt * derivada_p
 		t += 1
 
-		#---------------------------------------------------
-		#	h_n(t) calculation
-		#---------------------------------------------------
-		if t%10 == 0:
-			h_n = heaviside_n(q)
-
+		if t%100 == 0:
+			report("%10i %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g \n"%(t,q[0,0],q[1,0],q[2,0],q[0,1],q[1,1],q[2,1],q[0,2],q[1,2],q[2,2],q[0,3],q[1,3],q[2,3]))
+		
+	exit() 
 	#---------------------------------------------------------
 	#	Find wight h_n
 	#---------------------------------------------------------
-        weighted [s] = bf[s] * v_s[s] * h_n
+        weighted [s] = bf[s] * v_s[s] * heaviside(q)
 	report("%18.10g \n" %weighted[s])
 
 #---------------------------------------------
