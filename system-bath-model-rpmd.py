@@ -1,4 +1,3 @@
-#grep -v '#' nbids.2000.dat | awk '{n=n+1; S=S+$1}END{print S/n}'
 from scipy.sparse import diags
 import numpy as np
 import sys
@@ -27,7 +26,7 @@ hbar = 1.0545718e-34          # in m**2*kg/s
 w_c  = 500 *1e2               # in 1/m
 w_b  = 500 *1e2               # in 1/m
 V0pp = 2085*1e2		      # in 1/m
-nsamples = 1000
+nsamples = 1000000
 Nbids    = 4
 outfile  = sys.argv[1]
 f=3
@@ -107,24 +106,12 @@ for i in range(1,f):
 	Hessian[i,i] = m*w(i)**2
 evals, C = np.linalg.eigh(Hessian) 
 
-# Comprobamos que esta bien diagonalizado
-#print Hessian
-#print C.dot(np.diag(evals).dot(C.T))
-
 evals[1:] = evals[1:][::-1]
 C[:,1:] = C[:,1:][:,::-1]
 w_nm=np.sqrt(evals/m)
 
-# Vemos autovalores
-#print evals
-#print C.T.dot(Hessian.dot(C))
-#print w_nm/100.
-
-# Vemos autovectores
-#print C
-#exit()
 #-----------------------------------------
-#	Cholesky matrix
+#	Cholesky matrices
 #-----------------------------------------
 CholeskyList = []
 Ndim = Nbids-1
@@ -167,6 +154,8 @@ for s in range(nsamples/2):
 		qq[k,:] += -np.mean(qq[k,:]) #+cm[k] 
 	p = np.random.normal(loc=0.0,scale=sigmap,size=Nbids*f).reshape((f,Nbids))
         q = C.T.dot(qq)
+	report("%14.6g %14.6g %14.6g %14.6g \n"%(p[0,0],p[0,1],p[0,2],p[0,3]))
+	
 
 	#-------------------------------
 	#	Sampling	
@@ -185,8 +174,8 @@ for s in range(nsamples/2):
 
 v_s = np.array(v_s, dtype=np.float64)
 bf  = np.array(bf,  dtype=np.float64)
-
-#------------------------------------
+exit()
+#-----------------------------------
 #	Trajectories
 #------------------------------------
 for s in range(nsamples):
@@ -214,7 +203,7 @@ for s in range(nsamples):
 		
 	exit() 
 	#---------------------------------------------------------
-	#	Find wight h_n
+	#	Find weight h_n
 	#---------------------------------------------------------
         weighted [s] = bf[s] * v_s[s] * heaviside(q)
 	report("%18.10g \n" %weighted[s])
