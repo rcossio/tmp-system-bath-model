@@ -21,12 +21,13 @@ Kb   = 1.3806488e-23          # in J/K
 V0   = 0.425*1.60218e-19      # in J
 m    = 1061.*9.10938356e-31   # in kg
 a    = 0.734*5.2918e-11       # in m
-dt   = 20*1e-18               # in s
+dt   = 2*1e-18               # in s
 hbar = 1.0545718e-34          # in m**2*kg/s
 w_c  = 500 *1e2               # in 1/m
 w_b  = 500 *1e2               # in 1/m
 V0pp = 2085*1e2		      # in 1/m
-nsamples = 1000000
+nsamples = 1000
+nsteps = 70000
 Nbids    = 4
 outfile  = sys.argv[1]
 f=3
@@ -54,9 +55,15 @@ def c(i):
 
 def calcForce (q):
         F = np.zeros((f,Nbids),dtype=np.float64)
-	F[0,:] = 0.5* m* w_b**2 *q[0,:] - m**2 *w_b**4* q[0,i]**3/(4*V0pp)
-	for k in range(1,f):
-		F[k,:] = -m* w(k)**2 *q[k,:] +c(k)*q[0,:]
+#	F[0,:] = 0.5* m* w_b**2 *q[0,:] - m**2 *w_b**4* q[0,i]**3/(4*V0pp)
+#	for k in range(1,f):
+#		F[k,:] = -m* w(k)**2 *q[k,:] +c(k)*q[0,:]
+
+#	Esto es una mentira: pongo una fuerza armonica para ver como se mueve el polimero
+	for u in range(f):
+		for v in range(Nbids):
+			F[u,v] = -0.5* m* w_n**2 *q[u,v]/100
+	print np.linalg.norm(F)
 	return F
 
 def calc_derivada_p (q):
@@ -71,8 +78,7 @@ def calc_derivada_p (q):
 	return derivada
 	
 	
-def calcPotential (qq):
-	q = C.T.dot(qq)
+def calcPotential (q):
 	V = 0.0
 	for i in range(Nbids):
 		V += -0.5* m* w_b**2 *q[0,i]**2 + m**2 *w_b**4* q[0,i]**4/(16*V0pp)
@@ -87,7 +93,7 @@ def deltaV(q):
 	return deltav
 
 def heaviside(q):
-	qq = C.dot(q)
+	qq = C.T.dot(q)
         return np.heaviside(np.mean(qq[0,:]), 1.0)
 
 def report(string):
@@ -153,9 +159,8 @@ for s in range(nsamples/2):
 		qq[k,1:Nbids] = CholeskyList[k].dot(r)
 		qq[k,:] += -np.mean(qq[k,:]) #+cm[k] 
 	p = np.random.normal(loc=0.0,scale=sigmap,size=Nbids*f).reshape((f,Nbids))
-        q = C.T.dot(qq)
-	report("%14.6g %14.6g %14.6g %14.6g \n"%(p[0,0],p[0,1],p[0,2],p[0,3]))
-	
+
+        q = C.dot(qq)
 
 	#-------------------------------
 	#	Sampling	
@@ -174,13 +179,13 @@ for s in range(nsamples/2):
 
 v_s = np.array(v_s, dtype=np.float64)
 bf  = np.array(bf,  dtype=np.float64)
-exit()
+
 #-----------------------------------
 #	Trajectories
 #------------------------------------
 for s in range(nsamples):
 	t = 0
-	while t < 10000000:
+	while t < nsteps:
 		
 		#---------------------------------------------------
 		#	Initial state
