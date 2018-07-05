@@ -27,7 +27,7 @@ w_c  = 500 *1e2               # in 1/m
 w_b  = 500 *1e2               # in 1/m
 V0pp = 2085*1e2		      # in 1/m
 nsamples = 1000
-nsteps = 70000
+nsteps = 200000
 Nbids    = 4
 outfile  = sys.argv[1]
 f=3
@@ -55,15 +55,14 @@ def c(i):
 
 def calcForce (q):
         F = np.zeros((f,Nbids),dtype=np.float64)
-#	F[0,:] = 0.5* m* w_b**2 *q[0,:] - m**2 *w_b**4* q[0,i]**3/(4*V0pp)
-#	for k in range(1,f):
-#		F[k,:] = -m* w(k)**2 *q[k,:] +c(k)*q[0,:]
+	F[0,:] = 0.5* m* w_b**2 *q[0,:] - m**2 *w_b**4* q[0,i]**3/(4*V0pp)
+	for k in range(1,f):
+		F[k,:] = -m* w(k)**2 *q[k,:] +c(k)*q[0,:]
 
 #	Esto es una mentira: pongo una fuerza armonica para ver como se mueve el polimero
 	for u in range(f):
 		for v in range(Nbids):
-			F[u,v] = -0.5* m* w_n**2 *q[u,v]/100
-	print np.linalg.norm(F)
+			F[u,v] = -m*w_n**2* q[u,v]/1000
 	return F
 
 def calc_derivada_p (q):
@@ -157,7 +156,7 @@ for s in range(nsamples/2):
 	for k in range(f):
 		r = np.random.normal(loc=0.0,scale=1.0,size=Ndim)
 		qq[k,1:Nbids] = CholeskyList[k].dot(r)
-		qq[k,:] += -np.mean(qq[k,:]) #+cm[k] 
+		qq[k,:] += -np.mean(qq[k,:]) -5e-11 #+cm[k] 
 	p = np.random.normal(loc=0.0,scale=sigmap,size=Nbids*f).reshape((f,Nbids))
 
         q = C.dot(qq)
