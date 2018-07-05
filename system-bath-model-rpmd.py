@@ -16,16 +16,17 @@ cosh = np.cosh
 #----------------------------------
 #	Parameters
 #----------------------------------
-T    = 1000.0                 # in K
-Kb   = 1.3806488e-23          # in J/K 
-V0   = 0.425*1.60218e-19      # in J
-m    = 1061.*9.10938356e-31   # in kg
-a    = 0.734*5.2918e-11       # in m
-dt   = 2*1e-18               # in s
-hbar = 1.0545718e-34          # in m**2*kg/s
-w_c  = 500 *1e2               # in 1/m
-w_b  = 500 *1e2               # in 1/m
-V0pp = 2085*1e2		      # in 1/m
+T    = 1000.0                         # in K
+Kb   = 3.1672083472e-06		      # in Kb 
+m    = 1061.0                         # in m_e
+a    = 0.734                          # in a0
+dt   = 8e-2                           # in hbar/Eh
+hbar = 1.0                            # in hbar
+w_c  = 500  *4.5454545454545455e-06   # in Eh
+w_b  = 500  *4.5454545454545455e-06   # in Eh
+V0pp = 2085 *4.5454545454545455e-06   # in Eh
+
+
 nsamples = 1000
 nsteps = 200000
 Nbids    = 4
@@ -156,7 +157,7 @@ for s in range(nsamples/2):
 	for k in range(f):
 		r = np.random.normal(loc=0.0,scale=1.0,size=Ndim)
 		qq[k,1:Nbids] = CholeskyList[k].dot(r)
-		qq[k,:] += -np.mean(qq[k,:]) -5e-11 #+cm[k] 
+		qq[k,:] += -np.mean(qq[k,:]) -.5 #+cm[k] 
 	p = np.random.normal(loc=0.0,scale=sigmap,size=Nbids*f).reshape((f,Nbids))
 
         q = C.dot(qq)
