@@ -7,6 +7,7 @@ import sys
 #	Renaming math functions
 #----------------------------------
 pi  = np.pi
+sin = np.sin
 exp = np.exp
 log = np.log10
 sqrt = np.sqrt
@@ -41,8 +42,6 @@ beta_n = beta/Nbids
 w_n = 1/(beta_n*hbar)
 sigmap= sqrt(m/beta_n)
 S_T = sqrt(2*pi*beta*hbar**2/m)
-Q = 1./S_T
-N_p = 1./S_T
 eta = .1*m*w_b
 Freq = 10
 #--------------------------------
@@ -122,6 +121,11 @@ def report(string,filename=outfile):
         output = open(filename,'a')
         output.write(string)
         output.close()
+def calc_q_n(w):
+        q_n =1.0
+        for l in range(1,Nbids+1):
+                1/sqrt(4*sin(l*pi/Nbids)**2+(beta*hbar*w)**2)
+	return q_n
 
 #-----------------------------------------
 #	Normal mode transformation
@@ -132,6 +136,7 @@ for i in range(1,f):
 	Hessian[0,i] = -c(i)
 	Hessian[i,0] = -c(i)
 	Hessian[i,i] = m*w(i)**2
+	Hessian[0,0] += c(i)**2/m/w(i)**2
 evals, C = np.linalg.eigh(Hessian) 
 
 evals[1:] = evals[1:][::-1]
@@ -139,6 +144,22 @@ C[:,1:] = C[:,1:][:,::-1]
 if C[0,0] < 0.0:
 	C = -C
 w_nm=np.sqrt(evals/m)
+print w_nm*220000
+exit()
+#-----------------------------------------
+#	Calculating Np
+#-----------------------------------------
+Np = 1/S_T
+for k in range(1,f):
+	Np *= calc_q_n(w_nm[k])
+
+#-----------------------------------------------------
+#	Calculating Qr (previo normal mode analysis)
+#-----------------------------------------------------
+
+Qr = exp(beta*V0pp)
+for k in range(f):
+        Qr *= calc_q_n(w_nm_reactivo[k])
 
 #-----------------------------------------
 #	Cholesky matrices
@@ -254,7 +275,8 @@ for s in range(nsamples):
 #---------------------------------------------
 #	Find transmission coefficient
 #---------------------------------------------
-C_t = N_p * np.mean (weighted)
-k_t = C_t / Q
-report("# %14.6g %14.6g %14.6g %14.6g \n" %(T,1000/T,k_t,log(k_t)))
+C_t = Np * np.mean (weighted)
+k_t = C_t / Qr
+k_CL = w_b*exp(-beta*V0pp)/pi/sqrt(2)
+report("# %14.6g %14.6g %14.6g \n" %(T,eta,k_t/k_CL))
 
