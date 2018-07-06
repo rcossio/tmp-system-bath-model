@@ -16,7 +16,7 @@ cosh = np.cosh
 #----------------------------------
 #	Parameters
 #----------------------------------
-T    = 200.0                          # in K
+T    = 300.0                          # in K
 Kb   = 3.1672083472e-06		      # in Eh/K 
 m    = 1061.0                         # in m_e
 a    = 0.734                          # in a0
@@ -28,8 +28,8 @@ V0pp = 2085 *4.5454545454545455e-06   # in Eh
 
 
 nsamples = 1000
-nsteps = 300000
-Nbids    = 4
+nsteps = 100000
+Nbids    = 64
 outfile  = sys.argv[1]
 f=10
 
@@ -43,8 +43,8 @@ sigmap= sqrt(m/beta_n)
 S_T = sqrt(2*pi*beta*hbar**2/m)
 Q = 1./S_T
 N_p = 1./S_T
-eta = 1.0*m*w_b
-
+eta = .1*m*w_b
+Freq = 10
 #--------------------------------
 #	Functions
 #--------------------------------
@@ -210,8 +210,10 @@ bf  = np.array(bf,  dtype=np.float64)
 #------------------------------------
 for s in range(nsamples):
 	t = 0
-	while t < nsteps:
-		
+	heaviside_n_measurement = 0.0
+
+#	while t < nsteps:
+	while (0.01*(t+1) < heaviside_n_measurement*Freq < 0.99*(t+1)) or (t < 1000):
 		#---------------------------------------------------
 		#	Initial state
 		#---------------------------------------------------
@@ -228,20 +230,21 @@ for s in range(nsamples):
 		p = p + 0.5 * dt * derivada_p
 		t += 1
 
-		if t%10 == 0:
-			this_cm = np.mean(q,axis=1)
-                        report("%14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g \n"%tuple(this_cm))
+		if t%Freq == 0:
+#			this_cm = np.mean(q,axis=1)
+#                        report("%14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g \n"%tuple(this_cm))
 
-                        this_cm = np.mean(C.T.dot(q),axis=1)
-                        report("%14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g \n"%tuple(this_cm),filename=sys.argv[2])
+#                        this_cm = np.mean(C.T.dot(q),axis=1)
+#                        report("%14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g \n"%tuple(this_cm),filename=sys.argv[2])
 
-			report("%14.6g %14.6g %14.6g\n" %(extendedPotential(q),np.sum(p**2/2/m),extendedPotential(q)+np.sum(p**2/2/m)),filename=sys.argv[3])
-
+#			report("%14.6g %14.6g %14.6g\n" %(extendedPotential(q),np.sum(p**2/2/m),extendedPotential(q)+np.sum(p**2/2/m)),filename=sys.argv[3])
 
 #			report("%10i %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g \n"%(t,q[0,0],q[1,0],q[2,0],q[0,1],q[1,1],q[2,1],q[0,2],q[1,2],q[2,2],q[0,3],q[1,3],q[2,3]))
-#			report("%14.6g %14.6g\n" %(heaviside_n(q),heaviside(q)))
+
+                        report("%14.6g %14.6g\n" %(heaviside_n(q),heaviside(q)))
+
+			heaviside_n_measurement += heaviside_n(q)
 		
-	exit()
 	#---------------------------------------------------------
 	#	Find weight h_n
 	#---------------------------------------------------------
