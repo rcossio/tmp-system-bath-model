@@ -144,8 +144,7 @@ C[:,1:] = C[:,1:][:,::-1]
 if C[0,0] < 0.0:
 	C = -C
 w_nm=np.sqrt(evals/m)
-print w_nm*220000
-exit()
+
 #-----------------------------------------
 #	Calculating Np
 #-----------------------------------------
@@ -156,7 +155,18 @@ for k in range(1,f):
 #-----------------------------------------------------
 #	Calculating Qr (previo normal mode analysis)
 #-----------------------------------------------------
+HessianR = np.zeros((f,f),dtype=np.float64)
+HessianR[0,0] = 2*m*w_b**2
+for i in range(1,f):
+        HessianR[0,i] = -c(i)
+        HessianR[i,0] = -c(i)
+        HessianR[i,i] = m*w(i)**2
+        HessianR[0,0] += c(i)**2/m/w(i)**2
+evals, C = np.linalg.eigh(HessianR)
 
+evals = evals[::-1]
+C = C[:,::-1]
+w_nm_reactivo=np.sqrt(evals/m)
 Qr = exp(beta*V0pp)
 for k in range(f):
         Qr *= calc_q_n(w_nm_reactivo[k])
