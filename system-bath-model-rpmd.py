@@ -27,7 +27,7 @@ w_c  = 500  *4.5454545454545455e-06   # in Eh
 w_b  = 500  *4.5454545454545455e-06   # in Eh
 V0pp = 2085 *4.5454545454545455e-06   # in Eh
 
-nsamples = 10000
+nsamples = 2000
 nsteps   = 250
 Nbids    = 4
 outfile  = sys.argv[1]
@@ -106,7 +106,7 @@ def extendedPotential(q):
 def deltaV(q):
 	deltav = calcPotential(q)
 	for k in range(1,f):
-		deltav -= 0.5 * m * w_nm[k]**2 * np.linalg.norm(q[i,:])**2
+		deltav -= 0.5 * m * w_nm[k]**2 * np.linalg.norm(q[k,:])**2
 	return deltav
 
 def heaviside(q):
@@ -279,7 +279,7 @@ for s in range(nsamples):
 	#	Find weight h_n
 	#---------------------------------------------------------
         weighted [s] = bf[s] * v_s[s] * heaviside(q)
-	report("%18.10g \n" %weighted[s])
+	report("%18.10g %18.10g %18.10g\n" %(bf[s],v_s[s],weighted[s]))
 
 #---------------------------------------------
 #	Find transmission coefficient
