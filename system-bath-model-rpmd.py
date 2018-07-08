@@ -21,18 +21,17 @@ T    = 300.0                          # in K
 Kb   = 3.1672083472e-06		      # in Eh/K 
 m    = 1061.0                         # in m_e
 a    = 0.734                          # in a0
-dt   = 8e0                            # in Eh/hbar
+dt   = 48e0                            # in Eh/hbar   con 47-48 son 1.15fs  originalmente con 8 va re bien
 hbar = 1.0                            # in hbar
 w_c  = 500  *4.5454545454545455e-06   # in Eh
 w_b  = 500  *4.5454545454545455e-06   # in Eh
 V0pp = 2085 *4.5454545454545455e-06   # in Eh
 
-
-nsamples = 1000
-nsteps = 100000
-Nbids    = 64
+nsamples = 10000
+nsteps   = 250
+Nbids    = 4
 outfile  = sys.argv[1]
-f=10
+f        = 10
 
 #---------------------------------
 #	Constants
@@ -42,7 +41,8 @@ beta_n = beta/Nbids
 w_n = 1/(beta_n*hbar)
 sigmap= sqrt(m/beta_n)
 S_T = sqrt(2*pi*beta*hbar**2/m)
-eta = .1*m*w_b
+eta_over_mwb = 1.0
+eta = eta_over_mwb*m*w_b
 Freq = 10
 #--------------------------------
 #	Functions
@@ -162,10 +162,10 @@ for i in range(1,f):
         HessianR[i,0] = -c(i)
         HessianR[i,i] = m*w(i)**2
         HessianR[0,0] += c(i)**2/m/w(i)**2
-evals, C = np.linalg.eigh(HessianR)
+evals, Cr = np.linalg.eigh(HessianR)
 
 evals = evals[::-1]
-C = C[:,::-1]
+Cr = Cr[:,::-1]
 w_nm_reactivo=np.sqrt(evals/m)
 Qr = exp(beta*V0pp)
 for k in range(f):
@@ -241,10 +241,10 @@ bf  = np.array(bf,  dtype=np.float64)
 #------------------------------------
 for s in range(nsamples):
 	t = 0
-	heaviside_n_measurement = 0.0
+#	heaviside_n_measurement = 0.0
 
-#	while t < nsteps:
-	while (0.01*(t+1) < heaviside_n_measurement*Freq < 0.99*(t+1)) or (t < 1000):
+	while t < nsteps:
+#	while (0.05*(t+1) < heaviside_n_measurement*Freq < 0.95*(t+1)) or (t < 1000):
 		#---------------------------------------------------
 		#	Initial state
 		#---------------------------------------------------
@@ -261,7 +261,7 @@ for s in range(nsamples):
 		p = p + 0.5 * dt * derivada_p
 		t += 1
 
-		if t%Freq == 0:
+#		if t%Freq == 0:
 #			this_cm = np.mean(q,axis=1)
 #                        report("%14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g \n"%tuple(this_cm))
 
@@ -270,12 +270,11 @@ for s in range(nsamples):
 
 #			report("%14.6g %14.6g %14.6g\n" %(extendedPotential(q),np.sum(p**2/2/m),extendedPotential(q)+np.sum(p**2/2/m)),filename=sys.argv[3])
 
-#			report("%10i %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g \n"%(t,q[0,0],q[1,0],q[2,0],q[0,1],q[1,1],q[2,1],q[0,2],q[1,2],q[2,2],q[0,3],q[1,3],q[2,3]))
+#		report("%10i %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g \n"%(t,q[0,0],q[1,0],q[2,0],q[0,1],q[1,1],q[2,1],q[0,2],q[1,2],q[2,2],q[0,3],q[1,3],q[2,3]))
 
-                        report("%14.6g %14.6g\n" %(heaviside_n(q),heaviside(q)))
+                report("%14.6g %14.6g\n" %(heaviside_n(q),heaviside(q)))
 
-			heaviside_n_measurement += heaviside_n(q)
-		
+#			heaviside_n_measurement += heaviside_n(q)
 	#---------------------------------------------------------
 	#	Find weight h_n
 	#---------------------------------------------------------
@@ -288,5 +287,5 @@ for s in range(nsamples):
 C_t = Np * np.mean (weighted)
 k_t = C_t / Qr
 k_CL = w_b*exp(-beta*V0pp)/pi/sqrt(2)
-report("# %14.6g %14.6g %14.6g \n" %(T,eta,k_t/k_CL))
+report("# %14.6g %14.6g %14.6g \n" %(T,eta_over_mwb,k_t/k_CL))
 
