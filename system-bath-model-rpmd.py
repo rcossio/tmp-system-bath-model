@@ -272,7 +272,7 @@ for s in range(nsamples):
 
 #		report("%10i %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g \n"%(t,q[0,0],q[1,0],q[2,0],q[0,1],q[1,1],q[2,1],q[0,2],q[1,2],q[2,2],q[0,3],q[1,3],q[2,3]))
 
-                report("%14.6g %14.6g\n" %(heaviside_n(q),heaviside(q)))
+#                report("%14.6g %14.6g\n" %(heaviside_n(q),heaviside(q)))
 
 #			heaviside_n_measurement += heaviside_n(q)
 	#---------------------------------------------------------
