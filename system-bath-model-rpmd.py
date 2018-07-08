@@ -27,11 +27,13 @@ w_c  = 500  *4.5454545454545455e-06   # in Eh
 w_b  = 500  *4.5454545454545455e-06   # in Eh
 V0pp = 2085 *4.5454545454545455e-06   # in Eh
 
-nsamples = 2000
+nsamples = 5000
 nsteps   = 250
 Nbids    = 4
 outfile  = sys.argv[1]
 f        = 10
+eta_over_mwb = 0.5
+
 
 #---------------------------------
 #	Constants
@@ -41,7 +43,6 @@ beta_n = beta/Nbids
 w_n = 1/(beta_n*hbar)
 sigmap= sqrt(m/beta_n)
 S_T = sqrt(2*pi*beta*hbar**2/m)
-eta_over_mwb = 1.0
 eta = eta_over_mwb*m*w_b
 Freq = 10
 #--------------------------------
