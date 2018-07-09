@@ -35,7 +35,6 @@ outfile  = sys.argv[1]
 f        = 10
 eta_over_mwb = float(sys.argv[2])
 
-
 #---------------------------------
 #	Constants
 #---------------------------------
@@ -46,6 +45,7 @@ sigmap= sqrt(m/beta_n)
 S_T = sqrt(2*pi*beta*hbar**2/m)
 eta = eta_over_mwb*m*w_b
 Freq = 10
+
 #--------------------------------
 #	Functions
 #--------------------------------
@@ -104,7 +104,6 @@ def extendedPotential(q):
 	                        H += 0.5*m*w_n**2*(q[k,j]-q[k,j-1])**2
 	return H
 
-
 def deltaV(q):
 	deltav = calcPotential(q)
 	for k in range(1,f):
@@ -123,10 +122,11 @@ def report(string,filename=outfile):
         output = open(filename,'a')
         output.write(string)
         output.close()
+
 def calc_q_n(w):
         q_n =1.0
         for l in range(1,Nbids+1):
-                1/sqrt(4*sin(l*pi/Nbids)**2+(beta*hbar*w)**2)
+                q_n /= sqrt(4*sin(l*pi/Nbids)**2+(beta*hbar*w/Nbids)**2)
 	return q_n
 
 #-----------------------------------------
@@ -146,12 +146,10 @@ C[:,1:] = C[:,1:][:,::-1]
 if C[0,0] < 0.0:
 	C = -C
 w_nm=sqrt(evals/m)
-print w_nm*220000
-exit()
 #-----------------------------------------
 #	Calculating Np
 #-----------------------------------------
-Np = 1/S_T
+Np = 1./S_T
 for k in range(1,f):
 	Np *= calc_q_n(w_nm[k])
 
