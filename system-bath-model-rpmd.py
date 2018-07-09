@@ -10,6 +10,7 @@ pi  = np.pi
 sin = np.sin
 exp = np.exp
 log = np.log10
+ln  = np.log
 sqrt = np.sqrt
 tanh = np.tanh
 cosh = np.cosh
@@ -27,12 +28,12 @@ w_c  = 500  *4.5454545454545455e-06   # in Eh
 w_b  = 500  *4.5454545454545455e-06   # in Eh
 V0pp = 2085 *4.5454545454545455e-06   # in Eh
 
-nsamples = 5000
+nsamples = 10000
 nsteps   = 250
 Nbids    = 4
 outfile  = sys.argv[1]
 f        = 10
-eta_over_mwb = 0.5
+eta_over_mwb = float(sys.argv[2])
 
 
 #---------------------------------
@@ -49,10 +50,10 @@ Freq = 10
 #	Functions
 #--------------------------------
 def w(i):
-        return w_c*np.log((i+1-1.5)/float(f-1))
+        return -w_c*ln((i+1-1.5)/float(f-1))
 
 def c(i):
-        return w(i)*np.sqrt((2*eta*m*w_c)/(np.pi*(f-1)))
+        return w(i)*sqrt((2*eta*m*w_c)/(np.pi*(f-1)))
 
 def calcForce (q):
         F = np.zeros((f,Nbids),dtype=np.float64)
@@ -144,8 +145,9 @@ evals[1:] = evals[1:][::-1]
 C[:,1:] = C[:,1:][:,::-1]
 if C[0,0] < 0.0:
 	C = -C
-w_nm=np.sqrt(evals/m)
-
+w_nm=sqrt(evals/m)
+print w_nm*220000
+exit()
 #-----------------------------------------
 #	Calculating Np
 #-----------------------------------------
@@ -167,7 +169,8 @@ evals, Cr = np.linalg.eigh(HessianR)
 
 evals = evals[::-1]
 Cr = Cr[:,::-1]
-w_nm_reactivo=np.sqrt(evals/m)
+w_nm_reactivo=sqrt(evals/m)
+
 Qr = exp(beta*V0pp)
 for k in range(f):
         Qr *= calc_q_n(w_nm_reactivo[k])
@@ -186,7 +189,7 @@ for k in range(f):
 	Qcov = np.linalg.inv(tmp)
 	L = np.linalg.cholesky(Qcov)
 	L /= L[0,0]
-	L /= np.sqrt(beta_n*m*w_n**2)
+	L /= sqrt(beta_n*m*w_n**2)
 	CholeskyList.append(L)
 
 #-------------------------------
@@ -203,7 +206,7 @@ for s in range(nsamples/2):
 	#----------------------------------------------------------
         cm = np.zeros(f,dtype=np.float64)
 #	for k in range(1,f):
-#		sigmacm = 1./np.sqrt(beta_n*m*w_nm[k]**2)
+#		sigmacm = 1./sqrt(beta_n*m*w_nm[k]**2)
 #		cm[k]   = np.random.normal(loc=0.0,scale=sigmacm)
 #	cmqq = C.T.dot(cm)
 
@@ -285,8 +288,9 @@ for s in range(nsamples):
 #---------------------------------------------
 #	Find transmission coefficient
 #---------------------------------------------
+mweighted = np.mean (weighted)
 C_t = Np * np.mean (weighted)
 k_t = C_t / Qr
 k_CL = w_b*exp(-beta*V0pp)/pi/sqrt(2)
-report("# %14.6g %14.6g %14.6g \n" %(T,eta_over_mwb,k_t/k_CL))
+report("# %14.6g %14.6g %14.6g %14.6g\n" %(T,eta_over_mwb,k_t/k_CL,mweighted))
 
