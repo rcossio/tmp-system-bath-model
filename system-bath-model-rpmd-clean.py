@@ -158,17 +158,98 @@ Qr = exp(beta*V0pp)
 for k in range(f):
         Qr *= calc_q_n(w_nm_reactivo[k])
 
+#-----------------------------------------
+#	Cholesky matrices
+#-----------------------------------------
+CholeskyList = []
+Ndim = Nbids-1
+for k in range(f):
+	if k == 0:
+		factor = 0
+	else:
+		factor = (w_nm[k]/w_n)**2
+	tmp = diags([-1, 2+factor, -1], [-1, 0, 1], shape=(Ndim, Ndim)).toarray()
+	Qcov = np.linalg.inv(tmp)
+	L = np.linalg.cholesky(Qcov)
+	L /= L[0,0]
+	L /= sqrt(beta_n*m*w_n**2)
+	CholeskyList.append(L)
+
 #-------------------------------
 #	Initial sampling
 #-------------------------------
 z   = []
 v_s = []
 bf  = []
-weighted = []
-for line in open(sys.argv[3]):
-	weighted.append(float(line.split()[2]))
+weighted = np.zeros(nsamples,dtype=np.float64)
 
-weighted = np.array(weighted,dtype=np.float64)
+for s in range(nsamples/2):
+	#---------------------------------------------------------
+	#	Center of mass sampling in original coordinates
+	#----------------------------------------------------------
+        cm = np.zeros(f,dtype=np.float64)
+#	for k in range(1,f):
+#		sigmacm = 1./sqrt(beta_n*m*w_nm[k]**2)
+#		cm[k]   = np.random.normal(loc=0.0,scale=sigmacm)
+#	cmqq = C.T.dot(cm)
+
+	#------------------------------
+	#	Random sampling
+	#------------------------------
+	qq = np.zeros((f,Nbids),dtype=np.float64)
+	for k in range(f):
+		r = np.random.normal(loc=0.0,scale=1.0,size=Ndim)
+		qq[k,1:Nbids] = CholeskyList[k].dot(r)
+		qq[k,:] += -np.mean(qq[k,:]) + cm[k] 
+	p = np.random.normal(loc=0.0,scale=sigmap,size=Nbids*f).reshape((f,Nbids))
+
+        q = C.dot(qq)
+
+	#-------------------------------
+	#	Sampling	
+	#-------------------------------
+	z.append((q,p))
+	v_s.append(np.mean(p[0,:])/m)
+        bf.append( exp(-beta_n*deltaV(q)))
+
+	#-------------------------------
+	#	Symmetric Sampling
+	#------------------------------
+	p = -p
+        z.append((q,p))
+        v_s.append(np.mean(p[0,:])/m)
+        bf.append( exp(-beta_n*deltaV(q)))
+
+v_s = np.array(v_s, dtype=np.float64)
+bf  = np.array(bf,  dtype=np.float64)
+
+#-----------------------------------
+#	Trajectories
+#------------------------------------
+for s in range(nsamples):
+	t = 0
+	while t < nsteps:
+		#---------------------------------------------------
+		#	Initial state
+		#---------------------------------------------------
+		if t == 0:
+			(q,p) = z[s]
+
+		#---------------------------------------------------
+		#	Symplectic integrator - velocity verlet
+		#---------------------------------------------------
+		derivada_p = calc_derivada_p(q)
+		p = p + 0.5 * dt * derivada_p
+		q = q + 1.0 * dt * p/m
+		derivada_p = calc_derivada_p(q)
+		p = p + 0.5 * dt * derivada_p
+		t += 1
+
+	#---------------------------------------------------------
+	#	Find weight h_n
+	#---------------------------------------------------------
+        weighted [s] = bf[s] * v_s[s] * heaviside(q)
+	report("%18.10g %18.10g %18.10g\n" %(bf[s],v_s[s],weighted[s]))
 
 #---------------------------------------------
 #	Find transmission coefficient
