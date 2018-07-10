@@ -2,18 +2,14 @@ from scipy.sparse import diags
 import numpy as np
 import sys
 
-
 #----------------------------------
 #	Renaming math functions
 #----------------------------------
 pi  = np.pi
 sin = np.sin
 exp = np.exp
-log = np.log10
 ln  = np.log
 sqrt = np.sqrt
-tanh = np.tanh
-cosh = np.cosh
 
 #----------------------------------
 #	Parameters
@@ -22,15 +18,15 @@ T    = 300.0                          # in K
 Kb   = 3.1672083472e-06		      # in Eh/K 
 m    = 1061.0                         # in m_e
 a    = 0.734                          # in a0
-dt   = 48e0                            # in Eh/hbar   con 47-48 son 1.15fs  originalmente con 8 va re bien
+dt   = 48e0                           # in Eh/hbar (48 Eh/hbar ~ 1.15fs )
 hbar = 1.0                            # in hbar
 w_c  = 500  *4.5454545454545455e-06   # in Eh
 w_b  = 500  *4.5454545454545455e-06   # in Eh
 V0pp = 2085 *4.5454545454545455e-06   # in Eh
 
-nsamples = 10000
+nsamples = 5000
 nsteps   = 250
-Nbids    = 4
+Nbeads    = 2
 outfile  = sys.argv[1]
 f        = 10
 eta_over_mwb = float(sys.argv[2])
@@ -39,12 +35,11 @@ eta_over_mwb = float(sys.argv[2])
 #	Constants
 #---------------------------------
 beta = 1/(Kb*T)
-beta_n = beta/Nbids
+beta_n = beta/Nbeads
 w_n = 1/(beta_n*hbar)
 sigmap= sqrt(m/beta_n)
 S_T = sqrt(2*pi*beta*hbar**2/m)
 eta = eta_over_mwb*m*w_b
-Freq = 10
 
 #--------------------------------
 #	Functions
@@ -53,27 +48,22 @@ def w(i):
         return -w_c*ln((i+1-1.5)/float(f-1))
 
 def c(i):
-        return w(i)*sqrt((2*eta*m*w_c)/(np.pi*(f-1)))
+        return w(i)*sqrt(2*eta*m*w_c/pi/(f-1))
 
 def calcForce (q):
-        F = np.zeros((f,Nbids),dtype=np.float64)
+        F = np.zeros((f,Nbeads),dtype=np.float64)
 	F[0,:] = m* w_b**2 *q[0,:] - m**2 *w_b**4* q[0,:]**3/(4*V0pp) 
 	for k in range(1,f):
 		F[0,:] += c(k)*(q[k,:]-c(k)*q[0,:]/m/w(k)**2) 
 		F[k,:]  = -m* w(k)**2 *q[k,:] +c(k)*q[0,:]
-
-#	Esto es una mentira: pongo una fuerza armonica para ver como se mueve el polimero
-#	for u in range(f):
-#		for v in range(Nbids):
-#			F[u,v] = - m* w(1)**2 *q[u,v]
 	return F
 
 def calc_derivada_p (q):
 	derivada = calcForce(q)
-	for j in range(Nbids):
+	for j in range(Nbeads):
 		if   ( j == 0 ):
-                        derivada[:,j] += -m*w_n**2*(2*q[:,j]-q[:,Nbids-1]-q[:,j+1])
-		elif ( j == Nbids-1):
+                        derivada[:,j] += -m*w_n**2*(2*q[:,j]-q[:,Nbeads-1]-q[:,j+1])
+		elif ( j == Nbeads-1):
                         derivada[:,j] += -m*w_n**2*(2*q[:,j]-q[:,j-1]    -q[:,0]  )
 		else:
 			derivada[:,j] += -m*w_n**2*(2*q[:,j]-q[:,j-1]    -q[:,j+1])
@@ -82,24 +72,18 @@ def calc_derivada_p (q):
 	
 def calcPotential (q):
 	V = 0.0
-	for i in range(Nbids):
-		V += -0.5* m* w_b**2 *q[0,i]**2 + m**2 *w_b**4* q[0,i]**4/(16*V0pp)
-		for k in range(1,f):
-			V +=  0.5* m* w(k)**2 *(q[k,i]-c(k)*q[0,i]/(m*w(k)**2))**2
-
-#       Esto es una mentira: pongo una fuerza armonica para ver como se mueve el polimero
-#        for v in range(Nbids):
-#                for u in range(f):
-#                        V +=  0.5* m* w(1)**2 *q[u,v]**2
-
+	for j in range(Nbeads):
+		V += -0.5* m* w_b**2 *q[0,j]**2 + m**2 *w_b**4* q[0,j]**4/(16*V0pp)
+		for i in range(1,f):
+			V +=  0.5* m* w(i)**2 *(q[i,j]-c(i)*q[0,j]/(m*w(i)**2))**2
 	return V
 
 def extendedPotential(q):
 	H = calcPotential(q)
 	for k in range(f):
-	        for j in range(Nbids):
+	        for j in range(Nbeads):
 	                if   ( j == 0 ):
-	                        H += 0.5*m*w_n**2*(q[k,j]-q[k,Nbids-1])**2
+	                        H += 0.5*m*w_n**2*(q[k,j]-q[k,Nbeads-1])**2
 	                else:
 	                        H += 0.5*m*w_n**2*(q[k,j]-q[k,j-1])**2
 	return H
@@ -125,8 +109,8 @@ def report(string,filename=outfile):
 
 def calc_q_n(w):
         q_n =1.0
-        for l in range(1,Nbids+1):
-                q_n /= sqrt(4*sin(l*pi/Nbids)**2+(beta*hbar*w/Nbids)**2)
+        for l in range(Nbeads):
+                q_n /= sqrt(4*sin((l+1)*pi/Nbeads)**2+(beta*hbar*w/Nbeads)**2)
 	return q_n
 
 #-----------------------------------------
@@ -146,6 +130,7 @@ C[:,1:] = C[:,1:][:,::-1]
 if C[0,0] < 0.0:
 	C = -C
 w_nm=sqrt(evals/m)
+
 #-----------------------------------------
 #	Calculating Np
 #-----------------------------------------
@@ -167,17 +152,17 @@ evals, Cr = np.linalg.eigh(HessianR)
 
 evals = evals[::-1]
 Cr = Cr[:,::-1]
-w_nm_reactivo=sqrt(evals/m)
+w_nm_r=sqrt(evals/m)
 
 Qr = exp(beta*V0pp)
 for k in range(f):
-        Qr *= calc_q_n(w_nm_reactivo[k])
+        Qr *= calc_q_n(w_nm_r[k])
 
 #-----------------------------------------
 #	Cholesky matrices
 #-----------------------------------------
 CholeskyList = []
-Ndim = Nbids-1
+Ndim = Nbeads-1
 for k in range(f):
 	if k == 0:
 		factor = 0
@@ -211,12 +196,12 @@ for s in range(nsamples/2):
 	#------------------------------
 	#	Random sampling
 	#------------------------------
-	qq = np.zeros((f,Nbids),dtype=np.float64)
+	qq = np.zeros((f,Nbeads),dtype=np.float64)
 	for k in range(f):
 		r = np.random.normal(loc=0.0,scale=1.0,size=Ndim)
-		qq[k,1:Nbids] = CholeskyList[k].dot(r)
+		qq[k,1:Nbeads] = CholeskyList[k].dot(r)
 		qq[k,:] += -np.mean(qq[k,:]) + cm[k] 
-	p = np.random.normal(loc=0.0,scale=sigmap,size=Nbids*f).reshape((f,Nbids))
+	p = np.random.normal(loc=0.0,scale=sigmap,size=Nbeads*f).reshape((f,Nbeads))
 
         q = C.dot(qq)
 
@@ -243,10 +228,7 @@ bf  = np.array(bf,  dtype=np.float64)
 #------------------------------------
 for s in range(nsamples):
 	t = 0
-#	heaviside_n_measurement = 0.0
-
 	while t < nsteps:
-#	while (0.05*(t+1) < heaviside_n_measurement*Freq < 0.95*(t+1)) or (t < 1000):
 		#---------------------------------------------------
 		#	Initial state
 		#---------------------------------------------------
@@ -263,20 +245,6 @@ for s in range(nsamples):
 		p = p + 0.5 * dt * derivada_p
 		t += 1
 
-#		if t%Freq == 0:
-#			this_cm = np.mean(q,axis=1)
-#                        report("%14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g \n"%tuple(this_cm))
-
-#                        this_cm = np.mean(C.T.dot(q),axis=1)
-#                        report("%14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g \n"%tuple(this_cm),filename=sys.argv[2])
-
-#			report("%14.6g %14.6g %14.6g\n" %(extendedPotential(q),np.sum(p**2/2/m),extendedPotential(q)+np.sum(p**2/2/m)),filename=sys.argv[3])
-
-#		report("%10i %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g %14.6g \n"%(t,q[0,0],q[1,0],q[2,0],q[0,1],q[1,1],q[2,1],q[0,2],q[1,2],q[2,2],q[0,3],q[1,3],q[2,3]))
-
-#                report("%14.6g %14.6g\n" %(heaviside_n(q),heaviside(q)))
-
-#			heaviside_n_measurement += heaviside_n(q)
 	#---------------------------------------------------------
 	#	Find weight h_n
 	#---------------------------------------------------------
